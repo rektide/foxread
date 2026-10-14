@@ -14,6 +14,9 @@ sources:
 
 ## Integrated direction
 
+- [Implementation plan](implementation/plan0.gpt6a.md): current work-ready JSON
+  scope, eight crate boundaries, three kubeless reuse choices, ticket graph, and
+  measurement-backed executor scheduling assessment. Work anchor: `foxr-json`.
 - [Kubeless integration assessment](architecture/reuse2.gpt6a.md): parent review
   of the broad survey; recommends output assessment now, optional keyed diff
   later, and eight initial crate boundaries rather than a dedicated diff crate.
