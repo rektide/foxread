@@ -14,6 +14,9 @@ sources:
 
 ## Integrated direction
 
+- [Kubeless integration assessment](architecture/reuse2.gpt6a.md): parent review
+  of the broad survey; recommends output assessment now, optional keyed diff
+  later, and eight initial crate boundaries rather than a dedicated diff crate.
 - [Domain-shaped crates and verified full-state writes](architecture/layout1.gpt6a.md):
   current revision after human review; nine proposed crates, typed ID prefixes,
   in-place persistence, and desired-versus-actual output verification.
