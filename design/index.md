@@ -39,3 +39,10 @@ sources:
 - [Kopacetic and caminus investigation](kopacetic-persistence/persistence0.gpt6a.md):
   source-grounded APIs, filesystem layout options, identity and recovery limits,
   and a proposed first one-shot dump.
+
+## Reuse
+
+- [Kubeless reuse verdicts](kubeless/reuse0.glm53m.md): verified
+  desired-vs-filesystem comparison through kubeless-observation-assessment,
+  neutral observation diff through kubeless-view-change, no backend write-planning
+  reuse, and a demoted `core/diff` boundary.
