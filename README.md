@@ -10,6 +10,8 @@ sources:
     title: Commission and integrate Firefox storage, Watchman, and kopacetic persistence research
   - resource: /design/intent/brief0.gpt6a.md
     title: Initial goals and open design questions
+  - resource: /design/architecture/synthesis0.gpt6a.md
+    title: Integrated findings and proposed snapshot-first architecture
 ---
 
 # foxread
@@ -24,3 +26,15 @@ explicit. Git checkpoints are a later extension.
 
 Start with the [project brief](design/intent/brief0.gpt6a.md) and
 [research index](design/index.md).
+
+## Proposed starting point
+
+Firefox's windows/tabs are persisted as compressed JSON session snapshots;
+SQLite Places history is a separate enrichment source. Start with snapshot
+decode/diff and one profile value written through `CaminusStore::put_value`.
+
+The [architecture synthesis](design/architecture/synthesis0.gpt6a.md) proposes five
+Rust crates and the first end-to-end slice. The main choices are observation-scoped
+versus heuristic persistent IDs, in-place versus generation-based publication,
+and the visible filesystem layout. Disk snapshots do not supply reliable stable
+live tab IDs, and the current caminus backend writes in place.

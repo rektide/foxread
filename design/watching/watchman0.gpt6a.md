@@ -7,7 +7,9 @@ status: draft
 generated: { by: "openai/gpt-6-astra#high", at: 2026-10-14 }
 sources:
   - resource: "opencode://ses_ec59f6862ffeFt6UN2FUOhTXOO"
-    title: Commission Firefox and kopacetic investigations and inspect Watchman's Rust integration
+    title: Inspect Watchman's Rust integration and connect its observation boundary to the integrated architecture
+  - resource: /design/architecture/synthesis0.gpt6a.md
+    title: Integration with Firefox sessionstore and kopacetic source research
   - resource: https://github.com/facebook/watchman/blob/923b0935155590be54c0fc052fdca0201f8ebc4b/website/docs/cmd/subscribe.md
     title: Subscription lifecycle, initial results, and settling
   - resource: https://github.com/facebook/watchman/blob/923b0935155590be54c0fc052fdca0201f8ebc4b/website/docs/cmd/watch-project.md
@@ -116,3 +118,10 @@ silently mistaken for an active subscription.
 - A wider resolved root with correct profile-relative matching.
 
 These are behavioral test targets, not claims of tests already run.
+
+## Integration
+
+The [architecture synthesis](../architecture/synthesis0.gpt6a.md) joins this
+notification boundary to the actual Firefox snapshot format and the existing
+kopacetic sink. It recommends the official client for source watching because
+the inspected caminus wrapper drops some recovery signals.

@@ -12,6 +12,12 @@ sources:
 
 # Research index
 
+## Integrated direction
+
+- [Snapshot-first architecture](architecture/synthesis0.gpt6a.md): reconciles the
+  investigations, proposes five crates, and identifies identity, publication,
+  and visible-layout decisions before implementation.
+
 ## Intent
 
 - [Project brief](intent/brief0.gpt6a.md): user goals, the deferred Git extension,
@@ -19,6 +25,9 @@ sources:
 
 ## Observation
 
+- [Firefox stores and occhre reuse](firefox-stores/stores0.gpt6a.md): sessionstore
+  format and cadence, identity/timestamp limits, Places enrichment, and the
+  existing SQLite retention/read/extraction library spine.
 - [Watchman integration](watching/watchman0.gpt6a.md): official Rust client,
   notifications as invalidation, and reconnect/read/application boundaries.
 
