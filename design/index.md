@@ -14,9 +14,12 @@ sources:
 
 ## Integrated direction
 
+- [Domain-shaped crates and verified full-state writes](architecture/layout1.gpt6a.md):
+  current revision after human review; nine proposed crates, typed ID prefixes,
+  in-place persistence, and desired-versus-actual output verification.
 - [Snapshot-first architecture](architecture/synthesis0.gpt6a.md): reconciles the
-  investigations, proposes five crates, and identifies identity, publication,
-  and visible-layout decisions before implementation.
+  investigations and preserves the initial five-crate proposal and decision
+  framing; layout and publication direction are refined above.
 
 ## Intent
 

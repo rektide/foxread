@@ -12,6 +12,8 @@ sources:
     title: Initial goals and open design questions
   - resource: /design/architecture/synthesis0.gpt6a.md
     title: Integrated findings and proposed snapshot-first architecture
+  - resource: /design/architecture/layout1.gpt6a.md
+    title: Human-reviewed full-state write direction and domain-shaped crate proposal
 ---
 
 # foxread
@@ -33,8 +35,12 @@ Firefox's windows/tabs are persisted as compressed JSON session snapshots;
 SQLite Places history is a separate enrichment source. Start with snapshot
 decode/diff and one profile value written through `CaminusStore::put_value`.
 
-The [architecture synthesis](design/architecture/synthesis0.gpt6a.md) proposes five
-Rust crates and the first end-to-end slice. The main choices are observation-scoped
-versus heuristic persistent IDs, in-place versus generation-based publication,
-and the visible filesystem layout. Disk snapshots do not supply reliable stable
-live tab IDs, and the current caminus backend writes in place.
+The [current architecture revision](design/architecture/layout1.gpt6a.md) proposes
+nine crates grouped under `core/`, `firefox/`, `observe/`, `output/`, and `app/`.
+The selected direction is a full desired-value write in place, followed by
+comparison against the actual filesystem. IDs use `win_<id>` and `tab_<id>`;
+cross-snapshot identity remains a separate modeling question.
+
+The [initial synthesis](design/architecture/synthesis0.gpt6a.md) preserves the
+research integration. SQLite/WAL extraction design now proceeds separately in
+`~/src/walcap`; foxread's current focus is the JSON sessionstore path.
