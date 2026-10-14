@@ -49,9 +49,15 @@ verification:
     - "cargo test --manifest-path .test-agent/kubeless-reuse/Cargo.toml  -> 9 passed, 0 failed (4 domain-diff, 5 verify)"
     - "cargo tree -e dev + Cargo.lock  ->  kubeless closure is exactly 3 std-only crates, zero external dependencies"
   limits: >-
-    Probe covers comparison 1 and 3 shapes, not caminus integration; kubeless
-    tests were read, not rerun, except the scratch probe; kubeless 0.1.0 is
-    workspace-internal and unpubished, so revision pinning is mandatory.
+    Probe covers comparison 1 and 3 shapes with a synthetic desired inventory
+    and synthetic materialization; it is not a caminus integration. Its
+    partial-coverage test uses a manually constructed Observation (closure
+    Missing), not a partial-fact walker, and does not assert the exact
+    Satisfaction variant (API-deduced). The fixture walker is lossy for
+    non-UTF-8 names and treats all non-directory entries as ordinary files.
+    Kubeless tests were read, not rerun, except the scratch probe; kubeless
+    0.1.0 is workspace-internal and unpublished, so revision pinning is
+    mandatory.
 ---
 
 # Kubeless reuse for foxread
@@ -185,17 +191,22 @@ cranes do not intersect this:
   owns; there is no conflict classification to feed it.
 
 Nothing here beats "pass the full value to caminus." This comparison stays
-entirely inside caminus (and its planned upstream desired-tree exposure is a
-kopacetic-side question, already raised in the
-[foxread handoff](file:///home/rektide/src/kopacetic/design/consumers/foxread/handoff0.gpt6a.md)).
+entirely inside caminus. (Exposing the serializer's desired tree upstream is a
+kopacetic-side extension proposed by
+[layout1](../architecture/layout1.gpt6a.md); the
+[foxread handoff](file:///home/rektide/src/kopacetic/design/consumers/foxread/handoff0.gpt6a.md)
+deliberately stops at needs — "what evidence can a caller rely on" — without
+prescribing a solution.)
 
 ### 3. Desired vs final output verification — the strongest reuse
 
 This is the comparison foxread cannot skip: "know what really landed ...
 including removal of obsolete directories" (handoff, "Know whether application
 really finished"). `kubeless-observation-assessment` with its `collection`
-feature is almost purpose-built for it, and the probe proves it end-to-end
-from an external workspace.
+feature is almost purpose-built for it, and the probe proves the comparison
+mechanics from an external workspace — against a **synthetic** desired
+inventory and synthetic materialization. It is not an end-to-end caminus
+integration; caminus supplies neither side of the probe's inputs.
 
 The API (`observation/assessment/src/collection/`):
 
@@ -227,12 +238,33 @@ tests, std-only closure of exactly `kubeless-observation-assessment` →
 | Stale `windows/win_0009/**` tree | `!is_satisfied()`; every stale path known-unmet (including intermediate dirs); `change_set_ordered()` yields removal transitions for repair |
 | Deleted file + changed title | Exactly those two keys known-unmet, separately |
 | Scalar → directory (wrong kind) | The path **and** its unexpected child are known-unmet |
-| Incomplete enumeration (`closure: Missing`) via `assess_owned` | `!is_satisfied()` — **Unestablished, never false-clean**; missing key is a gap; **no transition fabricates its removal** |
+| Incomplete enumeration, via a **manually constructed** `Observation` with `closure: Missing` and `assess_owned` (not produced by the walker or `complete_entries`) | `!is_satisfied()`; the unobserved key is reported as a gap; **no transition fabricates its removal** |
 
 That last row is the property foxread would most likely get wrong in a local
-implementation: a walk that could not finish must not look like "everything
-else absent = clean", and unknown membership must never become a known-absence
-transition. The crate enforces both at the type level.
+implementation: an enumeration that could not finish must not look like
+"everything else absent = clean", and unknown membership must never become a
+known-absence transition. Three honesty notes on it:
+
+- **Library behavior, under stated inputs.** The crate guarantees this given
+  an honestly declared incomplete enumeration. It cannot prevent a caller
+  from falsely marking `closure: Known` over a partial walk — correct
+  verification depends on foxread's walker reporting coverage honestly.
+- **The partial route is deliberate, not automatic.** `complete_entries`
+  asserts complete enumeration (`Observation::complete` ⇒ closure `Known`)
+  and cannot produce partial gaps from walk errors. The probe's walker is
+  fail-closed — it returns `Result` and walk errors propagate, aborting
+  verification with no report at all (never a fabricated clean). Reporting
+  partial coverage instead is a separate route: construct the `Observation`
+  with `closure: Missing` (as that test does) and call `assess_owned`, which
+  yields gap/unestablished-family results rather than false conclusions.
+  Fail-closed is the sensible default for the small owned output tree.
+- **The exact `Satisfaction::Unestablished` variant is API-deduced, not
+  asserted.** The executed assertions are `!is_satisfied()`, a membership gap
+  for the unobserved key, and no removal transition. The variant follows
+  from `Report`'s construction (`Unmet` needs a known mismatch;
+  `report.rs` `from_flags`) and none exists when the observed entry matches
+  and the other coordinate is merely unobserved — but that is reasoning over
+  the API, not an executed check.
 
 What stays foxread-owned:
 
@@ -241,10 +273,18 @@ What stays foxread-owned:
    exposing its planned tree upstream (preferred), a scratch re-encode through
    the same serializer, or a foxread reflection walk. Assessment is agnostic:
    it consumes `(relative path, entry kind+content)` pairs from any of these.
-2. The **owned-tree walker** (~30 lines, demonstrated in the probe): skip
-   dot entries (preserve `.caminus/` metadata), record directories
-   (including empty ones) and file bytes or digests, and propagate walk
-   errors as `closure: Missing` rather than swallowing them.
+2. The **owned-tree walker**. The probe's ~30-line walker is a **fixture, not
+   code to lift unchanged into production**: it skips dot entries (preserving
+   `.caminus/` metadata) and records directories (including empty ones) and
+   file contents, but it builds its map keys with `to_string_lossy` — twice,
+   on the filename and on the joined relative path — and reads every
+   non-directory entry as an ordinary file. A production verifier must
+   preserve native path identity (or refuse unrepresentable names) and
+   classify unsupported entry kinds — symlinks and other non-regular entries —
+   as wrong-kind/unknown rather than silently treating them as ordinary
+   files. The ASCII fixture's success says nothing about arbitrary existing
+   filesystem entries. Walk errors propagate as `Result::Err` (the
+   fail-closed route above).
 3. The **cycle receipt**: candidate/source identity + owned root +
    `satisfaction()` + report rows; a completed cycle requires `Satisfied`.
    Per layout1, the future jj checkpoint hangs off this boundary — this is
@@ -272,7 +312,13 @@ default scalar profile has **no normal dependencies at all**. Values need
    normalized observation changed" gate, with `basis` cleanly encoding the
    projection version — an `IncompatibleBasis` after a foxread schema change
    forcing a rewrite rather than silently comparing incomparable values.
-   Cheap, std-only, no history retained.
+   Cheap, std-only, no history retained. **Scope: an optimization only.** It
+   may skip a redundant write when the output is already known-current, or
+   drive semantic-change reporting. It must never suppress pending retries,
+   restart-time verification, or explicit repair: after a restart or any
+   incomplete cycle, verify (and if needed resubmit the full value)
+   regardless of source equality. Full-value convergence remains the primary
+   mechanism, per the human-selected direction.
 4. **`kubeless-work-schedule-policy` (std) / `work-schedule` (Tokio) — runner
    coalescing** (slice 2+). `BatchWait::open(now, BatchOptions { quiet,
    maximum })` implements min(latest-observation+quiet, opened+maximum) with
@@ -346,7 +392,10 @@ default scalar profile has **no normal dependencies at all**. Values need
 
 ```rust,ignore
 use kubeless_observation_assessment::collection::{complete_entries, Mode};
-// K = relative path, V = owned entry; both Ord/Eq. Std-only closure.
+// Fail-closed route (probe walker semantics): a walk error aborts with the
+// error and no report is produced. complete_entries asserts complete
+// enumeration (Observation::complete => closure Known); it cannot produce
+// partial gaps from walk errors.
 let walked = walk_owned(&store.entity_path(&identity))?;   // foxread-owned walker
 let desired = desired_inventory(&snapshot)?;              // same encoding as the write
 let report = complete_entries(walked.iter(), desired.iter(), Mode::Exact)?;
@@ -354,9 +403,12 @@ if report.is_satisfied() {
     // completed cycle: record receipt (candidate digest + owned root), checkpoint later
 } else {
     // incomplete: retain candidate for repair; report.known_unmet() names
-    // missing / wrong-content / wrong-kind / stale paths; gaps() names what
-    // could not be established (walk error => closure Missing => Unestablished)
+    // missing / wrong-content / wrong-kind / stale paths. Repair is full-value
+    // resubmission, not transition replay.
 }
+// Deliberate partial-coverage route (only if reporting partials instead of
+// failing outright): construct Observation { closure: Missing, observed
+// facts } and call assess_owned — gaps()/unestablished-family results.
 ```
 
 Domain diff module (slice 2), from the probe:
@@ -401,13 +453,16 @@ boundaries, not requirements to preserve"):
   is mechanical (the probe doubles as a migration test).
 - **The scratch probe is disposable evidence**: `.test-agent/kubeless-reuse/`
   is gitignored; its findings are promoted here. When foxread's real
-  workspace exists, lift the walker/inventory types and these tests into
-  `output/caminus`.
+  workspace exists, lift the inventory types and these tests into
+  `output/caminus` — and write a production walker (native path identity,
+  entry-kind classification) rather than reusing the lossy fixture walker
+  unchanged.
 
 ## Unanswered questions
 
 1. **Desired-inventory source** — caminus exposing the serializer's desired
-   tree (preferred upstream extension per layout1 and the kopacetic handoff)
+   tree (the preferred upstream extension **proposed by layout1**; the
+   kopacetic handoff intentionally records needs only, not solutions)
    vs scratch re-encode vs independent reflection walk. Determines whether
    verification compares content bytes or digests; digests shrink memory but
    must come from the same encoding.
